@@ -1,5 +1,5 @@
 
---Start of Global Scope--------------------------------------------------------- 
+--Start of Global Scope---------------------------------------------------------
 local scanCounter = 0
 local SCAN_FILE_PATH = "resources/TestScenario.xml"
 print("Input File: ", SCAN_FILE_PATH)
@@ -19,7 +19,7 @@ assert(transform,"Transform could not be created. Check the device capabilites")
 viewer = View.create()
 assert(viewer,"Viewer was not created.\n")
 viewer:setID("viewer3D")
- 
+
 -- Create the required filter
 echoFilter = Scan.EchoFilter.create()
 assert(echoFilter,"Error: EchoFilter could not be created")
@@ -40,30 +40,30 @@ Scan.Provider.File.setFile(provider, SCAN_FILE_PATH)
 -- Set the DataSet of the recorded data which should be used.
 Scan.Provider.File.setDataSetID(provider, 1)
 
---End of Global Scope----------------------------------------------------------- 
+--End of Global Scope-----------------------------------------------------------
 
 --Start of Function and Event Scope---------------------------------------------
 
 --------------------------------------------------------------------------------
--- Calculate the average distance differences which are not larger than the 
+-- Calculate the average distance differences which are not larger than the
 -- given threshold, processes the first echo only!
 --------------------------------------------------------------------------------
 function getAverageDelta(inputScan, filteredScan, threshold, printDetails)
-  
+
   -- Get the beam and echo counts
   local beamCountInput = Scan.getBeamCount(inputScan)
   local beamCountFiltered = Scan.getBeamCount(filteredScan)
-  
+
   local count = 0
   local sum = 0.0
-  
+
   -- Checks
   if ( beamCountInput == beamCountFiltered ) then
     -- Print beams with different distances
     local distanceInput = Scan.toVector(inputScan,"DISTANCE", 0)
     local distanceMean  = Scan.toVector(filteredScan,"DISTANCE", 0)
     for iBeam=1, beamCountInput do
-      
+
       local d1 = distanceInput[iBeam]
       local d2 = distanceMean[iBeam]
       local delta = math.abs(d1-d2)
@@ -73,7 +73,7 @@ function getAverageDelta(inputScan, filteredScan, threshold, printDetails)
         sum = sum + delta
       end
     end
-    
+
     local average = 0.0
     if ( count > 0) then
       average = sum / count
@@ -83,34 +83,34 @@ function getAverageDelta(inputScan, filteredScan, threshold, printDetails)
   end
 end
 
--- Callback function to process new scans
+---Callback function to process new scans
 function handleNewScan(scan)
 
   local startTime = DateTime.getTimestamp()
   scanCounter = scanCounter + 1
-  
+
   -- Clone input scan
   local inputScan = Scan.clone(scan)
-  
+
   -- Call mean filter
   scan = Scan.EchoFilter.filter(echoFilter, scan)
   local filteredScan = Scan.MeanFilter.filter(meanFilter, scan)
   if ( filteredScan ~= nil ) then
-  
+
     -- Analyze filtered scan: get estimation of noise level
     -- larger differences are considered as real and are ignored
-    local threshold = 20.0 
+    local threshold = 20.0
     local count, sum, average = getAverageDelta(inputScan, filteredScan, threshold, true)
-    print(DateTime.getTime(),string.format("Scan %6d (%3d ms): average difference between mean distance and distance of last scan = %10.2f", 
+    print(DateTime.getTime(),string.format("Scan %6d (%3d ms): average difference between mean distance and distance of last scan = %10.2f",
                         scanCounter, DateTime.getTimestamp() - startTime, average))
-    
+
     -- Transform to PointCloud to view in the PointCloud viewer on the webpage
     local pointCloud = Scan.Transform.transformToPointCloud(transform, filteredScan)
     View.addPointCloud(viewer, pointCloud)
     View.present(viewer)
   end
 end
--- Register callback function to "OnNewScan" event. 
+-- Register callback function to "OnNewScan" event.
 -- This call also starts the playback of scans
 Scan.Provider.File.register(provider, "OnNewScan", handleNewScan)
 
